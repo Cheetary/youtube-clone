@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoTube</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        #app {
+            width: 80%;
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #video-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .video-item {
+            padding: 10px;
+            background: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>RoTube</h1>
+        <div id="register">
+            <h2>Register</h2>
+            <input type="text" id="reg-username" placeholder="Username">
+            <input type="email" id="reg-email" placeholder="Email">
+            <input type="password" id="reg-password" placeholder="Password">
+            <button onclick="register()">Register</button>
+        </div>
+        <div id="login">
+            <h2>Login</h2>
+            <input type="email" id="login-email" placeholder="Email">
+            <input type="password" id="login-password" placeholder="Password">
+            <button onclick="login()">Login</button>
+        </div>
+        <div id="upload">
+            <h2>Upload Video</h2>
+            <input type="text" id="video-title" placeholder="Title">
+            <input type="text" id="video-description" placeholder="Description">
+            <input type="file" id="video-file">
+            <button onclick="uploadVideo()">Upload</button>
+        </div>
+        <div id="videos">
+            <h2>All Videos</h2>
+            <div id="video-list"></div>
+        </div>
+    </div>
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        async function register() {
+            const username = document.getElementById('reg-username').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            const res = await fetch(`${API_URL}/users/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password }),
+            });
+            
+            if (res.ok) {
+                alert('Registration successful');
+            } else {
+                alert('Registration failed');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const res = await fetch(`${API_URL}/users/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                localStorage.setItem('token', data.token);
+                alert('Login successful');
+            } else {
+                alert('Login failed');
+            }
+        }
+
+        async function uploadVideo() {
+            const title = document.getElementById('video-title').value;
+            const description = document.getElementById('video-description').value;
+            const file = document.getElementById('video-file').files[0];
+
+            const formData = new FormData();
+            formData.append('video', file);
+            formData.append('title', title);
+            formData.append('description', description);
+
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/videos/upload`, {
+                method: 'POST',
+                headers: { 'x-auth-token': token },
+                body: formData,
+            });
+
+            if (res.ok) {
+                alert('Video uploaded');
+                getVideos(); // Refresh the video list after upload
+            } else {
+                alert('Video upload failed');
+            }
+        }
+
+        async function getVideos() {
+            const res = await fetch(`${API_URL}/videos/videos`);
+            const videos = await res.json();
+
+            const videoList = document.getElementById('video-list');
+            videoList.innerHTML = '';
+            videos.forEach(video => {
+                const videoItem = document.createElement('div');
+                videoItem.classList.add('video-item');
+                videoItem.innerHTML = `
+                    <h3>${video.title}</h3>
+                    <p>${video.description}</p>
+                    <p>Uploaded by: ${video.user.username}</p>
+                    <video src="${API_URL}/${video.url}" controls width="100%"></video>
+                `;
+                videoList.appendChild(videoItem);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', getVideos);
+    </script>
+</body>
+</html>
